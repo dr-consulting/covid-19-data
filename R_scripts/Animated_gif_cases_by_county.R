@@ -1,9 +1,7 @@
 library(tidyverse)
 library(gganimate)
 library(magick)
-library(directlabels)
 library(censusapi)
-library(tidycensus)
 library(foreach)
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -86,7 +84,6 @@ fips_na_helper <- function(df, state, pop_vals, fips_vals, county_names, missing
 # Incorporating most recent data avaiable - 2019
 CENSUS_API_KEY <- "964ccab1d7dd4a374d6be1fb807ea3a3af354a1e"
 target_year <- 2019
-census_api_key(CENSUS_API_KEY)
 
 county_population <- getCensus(name="pep/population", vintage = target_year, key = CENSUS_API_KEY, 
                                region = "county:*", vars = c("POP"))
@@ -226,8 +223,17 @@ breaks_df <- plot_map %>%
 # Sorting plot - relevant for getting geom_polygon to draw expected shape
 plot_map <- plot_map[order(plot_map$date, plot_map$state, plot_map$fips, plot_map$order),]
 
-unique_dates <- unique(plot_map$date)
-keep_dates <- seq(min(unique_dates), max(unique_dates), by=7)
+breaks_vals <- unlist(breaks_df[c(4,7,10),1])
+names(breaks_vals) <- NULL
+
+breaks_labels <- unlist(round(breaks_df[c(4,7,10),2], 1))
+breaks_labels <- as.character(breaks_labels)
+names(breaks_labels) <- NULL
+
+# Down-sample number of days... (R keeps crashing without helpful errors as to why...)
+# unique_dates <- unique(plot_map$date)
+# keep_dates <- unique_dates[seq(1, length(unique_dates), by=5)]
+# plot_map <- plot_map[plot_map$date %in% keep_dates, ]
 
 # plot_map <- plot_map[plot_map$date %in% keep_dates,]
 map_figure <- ggplot(data = plot_map) +
@@ -237,7 +243,8 @@ map_figure <- ggplot(data = plot_map) +
        caption = paste0("Data from New York Times and U.S. Census Bureau", "\n", 
                         "https://github.com/nytimes/covid-19-data", "\n", 
                         "https://www.census.gov/")) +
-  scale_fill_gradientn(colors=blues9, na.value="grey90", breaks=c(breaks_df[1,c(4,7,10)]), labels=c("1.2", "3.9", "13.2"),
+  scale_fill_gradientn(colors=blues9, na.value="grey90", breaks=breaks_vals, 
+                       labels=breaks_labels,
                        guide = guide_colourbar(barwidth = 35, barheight = 0.7,
                                                title.position = "top")) +
   theme(legend.position = "bottom",
@@ -247,7 +254,12 @@ map_figure <- ggplot(data = plot_map) +
         axis.ticks = element_blank(), 
         axis.text = element_blank(),
         panel.background = element_blank())+
-  transition_states(date, transition_length = .5, state_length = 1, wrap = FALSE)
+  transition_states(date)
 
-animated_map <- animate(map_figure, height=600, width=720,)
-magick::image_write(animated_map, "~/covid-19-data/Week-to-week-change-in-US-by-county.gif")
+anim_save("test.gif", path="~")
+
+# Stores in temporary folder
+animated_map <- animate(map_figure, height=600, width=720, nframes = length(unique(plot_map$date))*2+25,
+                        end_pause=25, fps = 5)
+
+anim_save("~/covid-19-data/Day-to-day-change-in-US-by-county.gif", animation = animated_map)
