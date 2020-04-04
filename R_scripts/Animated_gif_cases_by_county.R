@@ -82,7 +82,6 @@ fips_na_helper <- function(df, state, pop_vals, fips_vals, county_names, missing
 # Bringing in Census data regarding county population
 # Main usage is going to be to re-distribute Unknown cases across a state's counties using populations of those counties
 # Incorporating most recent data avaiable - 2019
-CENSUS_API_KEY <- "964ccab1d7dd4a374d6be1fb807ea3a3af354a1e"
 target_year <- 2019
 
 county_population <- getCensus(name="pep/population", vintage = target_year, key = CENSUS_API_KEY, 
