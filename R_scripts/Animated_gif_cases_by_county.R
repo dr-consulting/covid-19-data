@@ -4,6 +4,9 @@ library(magick)
 library(censusapi)
 library(foreach)
 
+# Contains local copy of Census API key 
+source("~/Documents/API_keys/govt_API_keys.R")
+
 #----------------------------------------------------------------------------------------------------------------------
 # Function below takes in NY Times county data and several user-specified arguments
 # Its purpose to is clean up and re-assign death and case counts within a given state/region based on population
@@ -235,6 +238,8 @@ names(breaks_labels) <- NULL
 # plot_map <- plot_map[plot_map$date %in% keep_dates, ]
 
 # plot_map <- plot_map[plot_map$date %in% keep_dates,]
+
+color_pal <- RColorBrewer::brewer.pal(9, "Blues")
 map_figure <- ggplot(data = plot_map) +
   geom_polygon(aes(x=x, y=y, group=group, fill=case_per_100k_grouping), rule="winding", color="grey", lwd=.25) +
   labs(title = "Cumulative COVID-19 Cases per 100,000 Population - Daily Snapshots: {closest_state}",
@@ -242,7 +247,7 @@ map_figure <- ggplot(data = plot_map) +
        caption = paste0("Data from New York Times and U.S. Census Bureau", "\n", 
                         "https://github.com/nytimes/covid-19-data", "\n", 
                         "https://www.census.gov/")) +
-  scale_fill_gradientn(colors=blues9, na.value="grey90", breaks=breaks_vals, 
+  scale_fill_gradientn(colors=color_pal, na.value="grey90", breaks=breaks_vals, 
                        labels=breaks_labels,
                        guide = guide_colourbar(barwidth = 35, barheight = 0.7,
                                                title.position = "top")) +
@@ -255,10 +260,57 @@ map_figure <- ggplot(data = plot_map) +
         panel.background = element_blank())+
   transition_states(date)
 
-anim_save("test.gif", path="~")
-
 # Stores in temporary folder
 animated_map <- animate(map_figure, height=600, width=720, nframes = length(unique(plot_map$date))*2+25,
                         end_pause=25, fps = 5)
 
 anim_save("~/covid-19-data/Day-to-day-change-in-US-by-county.gif", animation = animated_map)
+
+
+#----------------------------------------------------------------------------------------------------------------------
+# Lots of valid 0's - creating a color scheme that applies 10 gradients to cases with > 0 cases per 100,000
+plot_map$death_per_100k_grouping[plot_map$deaths_per_100k > 0] <- cut_number(plot_map$deaths_per_100k[plot_map$deaths_per_100k > 0], 10)
+plot_map$death_per_100k_grouping[plot_map$deaths_per_100k == 0] <- 0
+
+# Summary data for plotting break points on gradient scale: 
+breaks_df <- plot_map %>% 
+  select(death_per_100k_grouping, deaths_per_100k) %>% 
+  group_by(death_per_100k_grouping) %>% 
+  summarize(mean(deaths_per_100k))
+
+# Sorting plot - relevant for getting geom_polygon to draw expected shape
+plot_map <- plot_map[order(plot_map$date, plot_map$state, plot_map$fips, plot_map$order),]
+
+breaks_vals <- unlist(breaks_df[c(4,7,10),1])
+names(breaks_vals) <- NULL
+
+breaks_labels <- unlist(round(breaks_df[c(4,7,10),2], 1))
+breaks_labels <- as.character(breaks_labels)
+names(breaks_labels) <- NULL
+
+color_pal <- RColorBrewer::brewer.pal(9, "Reds")
+map_figure <- ggplot(data = plot_map) +
+  geom_polygon(aes(x=x, y=y, group=group, fill=death_per_100k_grouping), rule="winding", color="grey", lwd=.25) +
+  labs(title = "Cumulative COVID-19 Deaths per 100,000 Population - Daily Snapshots: {closest_state}",
+       fill="Confirmed COVID-19 Deaths per 100,000 Population", 
+       caption = paste0("Data from New York Times and U.S. Census Bureau", "\n", 
+                        "https://github.com/nytimes/covid-19-data", "\n", 
+                        "https://www.census.gov/")) +
+  scale_fill_gradientn(colors=color_pal, na.value="grey90", breaks=breaks_vals, 
+                       labels=breaks_labels,
+                       guide = guide_colourbar(barwidth = 35, barheight = 0.7,
+                                               title.position = "top")) +
+  theme(legend.position = "bottom",
+        legend.title=element_text(size=14), 
+        legend.text=element_text(size=10), 
+        axis.title = element_blank(), 
+        axis.ticks = element_blank(), 
+        axis.text = element_blank(),
+        panel.background = element_blank())+
+  transition_states(date)
+
+# Stores in temporary folder
+animated_map <- animate(map_figure, height=600, width=720, nframes = length(unique(plot_map$date))*2+25,
+                        end_pause=25, fps = 5)
+
+anim_save("~/covid-19-data/Day-to-day-change-in-US-by-county_deaths.gif", animation = animated_map)
