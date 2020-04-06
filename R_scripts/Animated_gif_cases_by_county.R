@@ -213,7 +213,7 @@ plot_map <- merge(plot_df, us_map[,-10], by="fips", all = TRUE)
 plot_map$date <- as.Date(plot_map$date)
 
 # Lots of valid 0's - creating a color scheme that applies 10 gradients to cases with > 0 cases per 100,000
-plot_map$case_per_100k_grouping[plot_map$cases_per_100k > 0] <- cut_number(plot_map$cases_per_100k[plot_map$cases_per_100k > 0], 10)
+plot_map$case_per_100k_grouping[plot_map$cases_per_100k > 0] <- cut_number(plot_map$cases_per_100k[plot_map$cases_per_100k > 0], 20)
 plot_map$case_per_100k_grouping[plot_map$cases_per_100k == 0] <- 0
 
 # Summary data for plotting break points on gradient scale: 
@@ -225,10 +225,10 @@ breaks_df <- plot_map %>%
 # Sorting plot - relevant for getting geom_polygon to draw expected shape
 plot_map <- plot_map[order(plot_map$date, plot_map$state, plot_map$fips, plot_map$order),]
 
-breaks_vals <- unlist(breaks_df[c(4,7,10),1])
+breaks_vals <- unlist(breaks_df[c(5,10,15, 20),1])
 names(breaks_vals) <- NULL
 
-breaks_labels <- unlist(round(breaks_df[c(4,7,10),2], 1))
+breaks_labels <- unlist(round(breaks_df[c(5,10,15, 20),2], 1))
 breaks_labels <- as.character(breaks_labels)
 names(breaks_labels) <- NULL
 
